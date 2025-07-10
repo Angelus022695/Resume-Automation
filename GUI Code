@@ -1,0 +1,152 @@
+import os
+from tkinter import Tk, Label, Entry, Button, filedialog, StringVar, Text, END, Scrollbar, RIGHT, Y, Frame
+from docx import Document
+
+# === STRICT RUN-LEVEL REPLACEMENT FUNCTION ===
+def strict_run_level_replace(doc, replacements):
+    for para in doc.paragraphs:
+        full_text = ''.join(run.text for run in para.runs)
+        original_text = full_text
+        for old, new in replacements.items():
+            full_text = full_text.replace(old, new)
+        if full_text != original_text:
+            for run in para.runs:
+                run.text = ''
+            if para.runs:
+                para.runs[0].text = full_text
+
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                for para in cell.paragraphs:
+                    full_text = ''.join(run.text for run in para.runs)
+                    original_text = full_text
+                    for old, new in replacements.items():
+                        full_text = full_text.replace(old, new)
+                    if full_text != original_text:
+                        for run in para.runs:
+                            run.text = ''
+                        if para.runs:
+                            para.runs[0].text = full_text
+
+    return doc
+
+class ResumeCoverApp:
+    def __init__(self, master):
+        self.master = master
+        master.title("Resume + Cover Letter Generator")
+
+        self.job_title = StringVar()
+        self.company_name = StringVar()
+        self.contact_title = StringVar()
+        self.last_name = StringVar()
+        self.resume_template_path = StringVar()
+        self.cover_template_path = StringVar()
+        self.resume_output_folder = StringVar()
+        self.cover_output_folder = StringVar()
+
+        # Labels and Input Fields
+        Label(master, text="Job Title:").grid(row=0, column=0)
+        Entry(master, textvariable=self.job_title, width=50).grid(row=0, column=1)
+
+        Label(master, text="Company Name:").grid(row=1, column=0)
+        Entry(master, textvariable=self.company_name, width=50).grid(row=1, column=1)
+
+        Label(master, text="Contact Title (e.g. Mr, Ms):").grid(row=2, column=0)
+        Entry(master, textvariable=self.contact_title, width=50).grid(row=2, column=1)
+
+        Label(master, text="Last Name:").grid(row=3, column=0)
+        Entry(master, textvariable=self.last_name, width=50).grid(row=3, column=1)
+
+        Button(master, text="Select Resume Template", command=self.load_resume_template).grid(row=4, column=0)
+        Label(master, textvariable=self.resume_template_path, width=50, anchor="w").grid(row=4, column=1)
+
+        Button(master, text="Select Cover Template", command=self.load_cover_template).grid(row=5, column=0)
+        Label(master, textvariable=self.cover_template_path, width=50, anchor="w").grid(row=5, column=1)
+
+        Button(master, text="Set Resume Output Folder", command=self.set_resume_output_folder).grid(row=6, column=0)
+        Label(master, textvariable=self.resume_output_folder, width=50, anchor="w").grid(row=6, column=1)
+
+        Button(master, text="Set Cover Output Folder", command=self.set_cover_output_folder).grid(row=7, column=0)
+        Label(master, textvariable=self.cover_output_folder, width=50, anchor="w").grid(row=7, column=1)
+
+        Button(master, text="Generate Files + Messages", command=self.generate_documents).grid(row=8, column=0, columnspan=2)
+
+        # Output Text Box
+        self.output_frame = Frame(master)
+        self.output_frame.grid(row=9, column=0, columnspan=2, sticky="nsew")
+        self.output_text = Text(self.output_frame, wrap='word', width=100, height=20)
+        self.scrollbar = Scrollbar(self.output_frame, command=self.output_text.yview)
+        self.output_text.configure(yscrollcommand=self.scrollbar.set)
+        self.output_text.pack(side="left", fill="both", expand=True)
+        self.scrollbar.pack(side=RIGHT, fill=Y)
+
+    def load_resume_template(self):
+        path = filedialog.askopenfilename(filetypes=[("Word files", "*.docx")])
+        self.resume_template_path.set(path)
+
+    def load_cover_template(self):
+        path = filedialog.askopenfilename(filetypes=[("Word files", "*.docx")])
+        self.cover_template_path.set(path)
+
+    def set_resume_output_folder(self):
+        path = filedialog.askdirectory()
+        self.resume_output_folder.set(path)
+
+    def set_cover_output_folder(self):
+        path = filedialog.askdirectory()
+        self.cover_output_folder.set(path)
+
+    def generate_documents(self):
+        job_title = self.job_title.get()
+        company_name = self.company_name.get()
+        contact_title = self.contact_title.get()
+        last_name = self.last_name.get()
+
+        cover_replacements = {
+            '[[JOB_TITLE]]': job_title,
+            '"[[JOB_TITLE]]"': job_title,
+            '[[COMPANY_NAME]]': company_name,
+            '"[[COMPANY_NAME]]"': company_name,
+            '[[CONTACT_TITLE]]': contact_title,
+            '[[LAST_NAME]]': last_name
+        }
+
+        resume_replacements = {
+            '[[JOB_TITLE]]': job_title,
+            '[[COMPANY_NAME]]': company_name
+        }
+
+        safe_job = job_title.replace(" ", "_")
+        safe_company = company_name.replace(" ", "_").replace("'", "")
+        base_name = f"{safe_job}({safe_company})"
+
+        # Resume
+        if self.resume_template_path.get() and self.resume_output_folder.get():
+            resume_doc = Document(self.resume_template_path.get())
+            updated_resume = strict_run_level_replace(resume_doc, resume_replacements)
+            resume_output_path = os.path.join(self.resume_output_folder.get(), f"Resume_{base_name}.docx")
+            updated_resume.save(resume_output_path)
+
+        # Cover Letter
+        if self.cover_template_path.get() and self.cover_output_folder.get():
+            cover_doc = Document(self.cover_template_path.get())
+            updated_cover = strict_run_level_replace(cover_doc, cover_replacements)
+            cover_output_path = os.path.join(self.cover_output_folder.get(), f"Cover Letter_{base_name}.docx")
+            updated_cover.save(cover_output_path)
+
+        # Cold Contact Message
+        cold_contact_message = f"""Hi {contact_title} {last_name},\n\n*text*{job_title} role at {company_name}.\n\nI*text*\n\n*text*
+
+        linkedin_connect_message = f"""Hi {contact_title} {last_name},\n\nI*text*\n\n*text*"""
+
+        self.output_text.delete(1.0, END)
+        self.output_text.insert(END, "--- Cold Contact Message ---\n\n")
+        self.output_text.insert(END, cold_contact_message + "\n\n\n")
+        self.output_text.insert(END, "--- LinkedIn Connection Message ---\n\n")
+        self.output_text.insert(END, linkedin_connect_message)
+
+if __name__ == "__main__":
+    root = Tk()
+    app = ResumeCoverApp(root)
+    root.mainloop()
