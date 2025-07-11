@@ -69,6 +69,6 @@ These will help users who struggle to write their own application materials or c
 
 This project is licensed under the [Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)](https://creativecommons.org/licenses/by-nc/4.0/).
 
-You may use, copy, and modify the code **for non-commercial purposes only**, and **you must credit the original author: Angelus Salvator**.
+You may use, copy, and modify the code **for non-commercial purposes only**, and **you must credit the original author: Adam Gardner**.
 
 **Commercial use, resale, or inclusion in paid products is strictly prohibited without prior written permission.**
